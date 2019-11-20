@@ -146,6 +146,32 @@ UPROGS=\
 	$U/_alloctest\
 	$U/_guest\
 
+UPROGS_TO_CLEAN=\
+	$U/_cat\
+	$U/_echo\
+	$U/_forktest\
+	$U/_grep\
+	$U/_init\
+	$U/_kill\
+	$U/_ln\
+	$U/_ls\
+	$U/_mkdir\
+	$U/_rm\
+	$U/_sh\
+	$U/_stressfs\
+	$U/_usertests\
+	$U/_wc\
+	$U/_zombie\
+	$U/_cowtest\
+	$U/_uthread\
+	$U/_call\
+	$U/_testsh\
+	$U/_kalloctest\
+	$U/_bcachetest\
+	$U/_mounttest\
+	$U/_crashtest\
+	$U/_alloctest\
+
 fs.img: mkfs/mkfs README user/xargstest.sh $(UPROGS)
 	mkfs/mkfs fs.img README user/xargstest.sh $(UPROGS)
 
@@ -157,7 +183,7 @@ clean:
 	$U/initcode $U/initcode.out $K/kernel fs.img \
 	mkfs/mkfs .gdbinit \
         $U/usys.S \
-	$(UPROGS)
+	$(UPROGS_TO_CLEAN)
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
