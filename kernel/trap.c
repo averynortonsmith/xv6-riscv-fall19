@@ -65,6 +65,10 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if(r_scause() == 2){
+    // illegal instruction
+    printf("%p\n", r_sepc());
+    p->tf->epc += 4;
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

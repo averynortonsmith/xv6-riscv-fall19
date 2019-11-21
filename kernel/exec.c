@@ -14,7 +14,7 @@ exec(char *path, char **argv)
 {
   char *s, *last;
   int i, off;
-  uint64 argc, sz, sp, ustack[MAXARG+1], stackbase;
+  uint64 argc = 0, sz, sp = 0, ustack[MAXARG+1], stackbase;
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
@@ -22,6 +22,12 @@ exec(char *path, char **argv)
   struct proc *p = myproc();
 
   begin_op(ROOTDEV);
+
+  if(strncmp(path, "guest", 6) == 0){
+    p->guest=1;
+  } else {
+    p->guest=0;
+  }
 
   if((ip = namei(path)) == 0){
     end_op(ROOTDEV);
@@ -39,7 +45,7 @@ exec(char *path, char **argv)
     goto bad;
 
   // Load program into memory.
-  sz = 0;
+  sz = p->guest ? KERNBASE : 0;
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -49,8 +55,10 @@ exec(char *path, char **argv)
       goto bad;
     if(ph.vaddr + ph.memsz < ph.vaddr)
       goto bad;
-    if((sz = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0)
+    if((sz = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0){
+      printf("sz: %d, vaddr + memz: %x\n", sz, ph.vaddr + ph.memsz);
       goto bad;
+    }
     if(ph.vaddr % PGSIZE != 0)
       goto bad;
     if(loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
@@ -63,41 +71,43 @@ exec(char *path, char **argv)
   p = myproc();
   uint64 oldsz = p->sz;
 
-  // Allocate two pages at the next page boundary.
-  // Use the second as the user stack.
-  sz = PGROUNDUP(sz);
-  if((sz = uvmalloc(pagetable, sz, sz + 2*PGSIZE)) == 0)
-    goto bad;
-  uvmclear(pagetable, sz-2*PGSIZE);
-  sp = sz;
-  stackbase = sp - PGSIZE;
-
-  // Push argument strings, prepare rest of stack in ustack.
-  for(argc = 0; argv[argc]; argc++) {
-    if(argc >= MAXARG)
+  if(!(p->guest)){
+    // Allocate two pages at the next page boundary.
+    // Use the second as the user stack.
+    sz = PGROUNDUP(sz);
+    if((sz = uvmalloc(pagetable, sz, sz + 2*PGSIZE)) == 0)
       goto bad;
-    sp -= strlen(argv[argc]) + 1;
-    sp -= sp % 16; // riscv sp must be 16-byte aligned
+    uvmclear(pagetable, sz-2*PGSIZE);
+    sp = sz;
+    stackbase = sp - PGSIZE;
+
+    // Push argument strings, prepare rest of stack in ustack.
+    for(argc = 0; argv[argc]; argc++) {
+      if(argc >= MAXARG)
+        goto bad;
+      sp -= strlen(argv[argc]) + 1;
+      sp -= sp % 16; // riscv sp must be 16-byte aligned
+      if(sp < stackbase)
+        goto bad;
+      if(copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
+        goto bad;
+      ustack[argc] = sp;
+    }
+    ustack[argc] = 0;
+
+    // push the array of argv[] pointers.
+    sp -= (argc+1) * sizeof(uint64);
+    sp -= sp % 16;
     if(sp < stackbase)
       goto bad;
-    if(copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
+    if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0)
       goto bad;
-    ustack[argc] = sp;
+
+    // arguments to user main(argc, argv)
+    // argc is returned via the system call return
+    // value, which goes in a0.
+    p->tf->a1 = sp;
   }
-  ustack[argc] = 0;
-
-  // push the array of argv[] pointers.
-  sp -= (argc+1) * sizeof(uint64);
-  sp -= sp % 16;
-  if(sp < stackbase)
-    goto bad;
-  if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0)
-    goto bad;
-
-  // arguments to user main(argc, argv)
-  // argc is returned via the system call return
-  // value, which goes in a0.
-  p->tf->a1 = sp;
 
   // Save program name for debugging.
   for(last=s=path; *s; s++)
@@ -108,9 +118,14 @@ exec(char *path, char **argv)
   // Commit to the user image.
   oldpagetable = p->pagetable;
   p->pagetable = pagetable;
+  if(p->guest){
+    if((sz = uvmalloc(pagetable, sz, GUEST_PHYSTOP)) == 0)
+      goto bad;
+  } else {
+    p->tf->sp = sp; // initial stack pointer
+  }
   p->sz = sz;
   p->tf->epc = elf.entry;  // initial program counter = main
-  p->tf->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
 
   return argc; // this ends up in a0, the first argument to main(argc, argv)
