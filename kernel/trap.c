@@ -67,8 +67,17 @@ usertrap(void)
     syscall();
   } else if(r_scause() == 2){
     // illegal instruction
-    printf("%p\n", r_sepc());
-    p->tf->epc += 4;
+    printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+    p->killed = 1;
+
+    uint64 va = r_sepc();
+    uint64 pa = walkaddr(p->pagetable, va);
+
+    printf("%p\n", *(uint64*)pa);
+
+    panic("vm trap");
+
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
