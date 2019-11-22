@@ -76,38 +76,36 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if(r_scause() == 2){
+  } else if(r_scause() == 2 && p->guest){
     // illegal instruction
 
     // return to next instruction
-    p->tf->epc += 4;
+    // printf("%p\n", r_sepc());
+    int instr=0;
+    copyin(p->pagetable, (char*)&instr, r_sepc(), 4);
+    // printf("0x%a\n", instr);
+    int opcode = instr & 0x7f;
 
-    // pointer to trapped instruction
-    uint64 ip = r_sepc();
-    // instruction value (32 bits)
-    uint32 in = *(uint32*)ip;
-    // op code
-    uint64 op = in & 0x7f;
+    switch (opcode)
+    {
+    case 0x73:
+      if((7<<12 & instr) == 2<<12){
+        // get register number
+        uint64 regInd = ((instr >> 7) & 0x1f);
+        // printf("%d\n", regInd);
 
-    printf("trap command ");
-    print_binary(in, 32);
-    printf("at 0x%p\n", ip);
-
-    if (op == 0x73) {
-      printf("%s\n", "trap csrrw");
-      // get register number
-      uint64 regInd = ((in >> 7) & 0x1f);
-      printf("%d\n", regInd);
-
-      // tf starts storing at x1 (ra), so -1 from index
-      *(&p->tf->ra + regInd - 1) = 0;
-
-    } else {
+        // tf starts storing at x1 (ra), so -1 from index
+        *(&p->tf->ra + regInd - 1) = 0;
+      }
+      break;
+    
+    default:
       printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
       printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-      p->killed = 1;
       panic("vm trap");
     }
+
+    p->tf->epc += 4;
 
   } else if((which_dev = devintr()) != 0){
     // ok
