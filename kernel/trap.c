@@ -80,7 +80,7 @@ usertrap(void)
     // illegal instruction
 
     // return to next instruction
-    // printf("%p\n", r_sepc());
+    printf("%p\n", r_sepc());
     int instr=0;
     copyin(p->pagetable, (char*)&instr, r_sepc(), 4);
     // printf("0x%a\n", instr);
@@ -96,6 +96,10 @@ usertrap(void)
 
         // tf starts storing at x1 (ra), so -1 from index
         *(&p->tf->ra + regInd - 1) = 0;
+      } else {
+        printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+        printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+        panic("vm trap");
       }
       break;
     
