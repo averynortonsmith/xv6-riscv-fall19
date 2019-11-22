@@ -29,6 +29,17 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+// https://stackoverflow.com/a/27627015/6680182
+void print_binary(uint32 number, int length) {
+  if (length) {
+    print_binary(number >> 1, length - 1);
+    printf("%s", (number & 1) ? "1" : "0");
+    if (length % 4 == 0) {
+      printf(" ");
+    }
+  }
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -67,20 +78,25 @@ usertrap(void)
     syscall();
   } else if(r_scause() == 2){
     // illegal instruction
-    printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
-    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-    
+
     p->tf->epc += 4;
 
-    uint64 va = r_sepc();
-    uint64 pa = walkaddr(p->pagetable, va);
+    uint64 ip = r_sepc();
+    uint64 in = *(uint32*)ip;
+    uint64 op = in & 0x7f;
 
-    printf("%p\n", pa);
-    printf("%p\n", *(uint32*)pa);
+    printf("trap command ");
+    print_binary(in, 32);
+    printf("at 0x%p\n", ip);
 
-    if (pa == 0x000000009fe85000) {
+    if (op == 0x73) {
+      printf("%s\n", "trap csrrw");
+      reg op = in & 0x7f;
+
       p->tf->a1 = 0;
     } else {
+      printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
       p->killed = 1;
       panic("vm trap");
     }
