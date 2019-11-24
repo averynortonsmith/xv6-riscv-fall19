@@ -81,28 +81,39 @@ usertrap(void)
 
     // return to next instruction
     printf("%p\n", r_sepc());
-    int instr=0;
+    uint64 instr = 0;
     copyin(p->pagetable, (char*)&instr, r_sepc(), 4);
     // printf("0x%a\n", instr);
-    int opcode = instr & 0x7f;
+    uint64 opcode = instr & 0x7f;
 
     switch (opcode) {
       case 0x73: ; // https://stackoverflow.com/a/18496437/6680182
-        int func3 = (instr >> 12) & 0x7;
+        uint64 func3 = (instr >> 12) & 0x7;
+
+        // get register number
+        // printf("%d\n", regInd);
+        uint64 regInd = ((instr >> 7) & 0x1f);
+        uint64* regPtr = (&p->tf->ra + regInd - 1);
+
         if(func3 == 0x2){
-          // get register number
-          uint64 regInd = ((instr >> 7) & 0x1f);
-          // printf("%d\n", regInd);
+          uint64 csr = (instr >> 20);
+          uint64 storeVal;
+
+          printf("csr %p\n", csr);
+          if (csr == 0xf14) { // mhartid
+            storeVal = 0;
+          } else if (csr == 0x300) { // mstatus
+            goto vmPanic;
+          } else {
+            goto vmPanic;
+          }
 
           // tf starts storing at x1 (ra), so -1 from index
-          *(&p->tf->ra + regInd - 1) = 0;
+          *regPtr = storeVal;
+
         } else if(func3 == 0x1){
-          // get register number
-          uint64 regInd = ((instr >> 7) & 0x1f);
-
           // tf starts storing at x1 (ra), so -1 from index
-          int regVal = *(&p->tf->ra + regInd - 1);
-          p->mstatus = regVal;
+          p->mstatus = *regPtr;
         } else {
           goto vmPanic;
         }
