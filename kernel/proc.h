@@ -105,4 +105,5 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   char guest;
+  uint32 mstatus;
 };
