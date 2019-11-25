@@ -78,6 +78,10 @@ struct trapframe {
   /* 264 */ uint64 t4;
   /* 272 */ uint64 t5;
   /* 280 */ uint64 t6;
+  uint32 mstatus;
+  uint32 medeleg;
+  uint32 mideleg;
+  uint32 mepc;
 };
 
 enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
@@ -105,5 +109,4 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   char guest;
-  uint32 mstatus;
 };

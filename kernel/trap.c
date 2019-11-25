@@ -94,16 +94,18 @@ usertrap(void)
         // printf("%d\n", regInd);
         uint64 regInd = ((instr >> 7) & 0x1f);
         uint64* regPtr = (&p->tf->ra + regInd - 1);
+        uint64 csr = (instr >> 20);
 
         if(func3 == 0x2){
-          uint64 csr = (instr >> 20);
           uint64 storeVal;
 
-          printf("csr %p\n", csr);
           if (csr == 0xf14) { // mhartid
             storeVal = 0;
+
           } else if (csr == 0x300) { // mstatus
-            goto vmPanic;
+            storeVal = 0; // may need to change
+            // for now just set to zero (default during normal xv6 boot)
+
           } else {
             goto vmPanic;
           }
@@ -112,8 +114,26 @@ usertrap(void)
           *regPtr = storeVal;
 
         } else if(func3 == 0x1){
-          // tf starts storing at x1 (ra), so -1 from index
-          p->mstatus = *regPtr;
+          
+          if (csr == 0x300) { // mstatus
+            p->tf->mstatus = *regPtr;
+
+          } else if (csr == 0x302) { // medeleg
+            p->tf->medeleg = *regPtr;
+
+          } else if (csr == 0x303) { // mideleg
+            p->tf->mideleg = *regPtr;
+
+          } else if (csr == 0x341) { // mepc
+            p->tf->mepc = *regPtr;
+
+          } else if (csr == 0x180) { // satp
+            p->tf->kernel_satp = *regPtr;
+
+          } else {
+            goto vmPanic;
+          }
+
         } else {
           goto vmPanic;
         }
