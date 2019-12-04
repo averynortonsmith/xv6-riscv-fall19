@@ -51,6 +51,8 @@ vm_panic(int pid)
 void
 guesttrap(void)
 {
+  int which_dev = 0;
+
   struct proc *p = myproc();
   // printf("%p\n", r_sepc());
   
@@ -136,9 +138,31 @@ guesttrap(void)
     }
   } else if(r_scause() == 0xd) { // guest load page fault
     uint64 va = r_stval();
-    // guest tries to read cycles since boot
     if (va == 0x000000000200bff8) {
+    // guest tries to read cycles since boot
       // return garbage
+
+    } else if (va == 0x0000000010000005) {
+    // guest tries to read line status register from UART
+      switch (opcode) {
+        case 0x3: {
+          uint8 funct3 = (instr >> 12) & 0x7; // what csr instruction?
+          uint8 rd = ((instr >> 7) & 0x1f); // register is x[rd]
+          uint64* regPtr = (&p->tf->ra + rd - 1);
+
+          if (funct3 == 0x4) {
+            uint64 storeVal = 1;
+            *regPtr = storeVal;
+
+          } else {
+            printf("%s\n", "uart");
+            vm_panic(p->pid);
+          }
+
+          break;
+        }
+      }
+
     } else {
       vm_panic(p->pid);
     }
@@ -150,6 +174,9 @@ guesttrap(void)
     } else {
       vm_panic(p->pid);
     }
+
+  } else if ((which_dev = devintr()) != 0) {
+    
   } else {
     vm_panic(p->pid);
   }
