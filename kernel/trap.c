@@ -85,12 +85,18 @@ guesttrap(void)
               p->regs.medeleg = *regPtr;
             } else if (csr == 0x303) { // mideleg
               p->regs.mideleg = *regPtr;
-
+            } else if (csr == 0x340) { // mscratch
+              p->regs.mscratch = *regPtr;
             } else if (csr == 0x341) { // mepc
               p->regs.mepc = *regPtr;
-
             } else if (csr == 0x180) { // satp
               p->tf->kernel_satp = *regPtr;
+            } else if (csr == 0x304) { // mie
+              // enable machine-mode timer interrupts.
+              p->regs.mie = *regPtr;
+            } else if (csr == 0x305) { // mtvec
+              // set the machine-mode trap handler.
+              p->regs.mtvec = *regPtr;
             } else if (csr == 0x100) {
               p->regs.sstatus = *regPtr;
             } else {
@@ -106,6 +112,8 @@ guesttrap(void)
             if (csr == 0xf14) { // mhartid
               storeVal = 0;
             } else if (csr == 0x300) { // mstatus
+              storeVal = 0; // may need to change
+            } else if (csr == 0x304) { // mie
               storeVal = 0; // may need to change
               // for now just set to zero (default during normal xv6 boot)
             } else if(csr == 0x100) {
