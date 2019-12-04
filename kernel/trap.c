@@ -90,7 +90,7 @@ usertrap(void)
 
       // mret
       if (instr == 0x30200073) {
-        p->tf->epc = p->tf->mepc;
+        p->tf->epc = p->regs.mepc;
         goto dontAdvance;
 
       } else if (opcode == 0x73) {
@@ -133,30 +133,30 @@ usertrap(void)
           uint64* regRS1Ptr = (&p->tf->ra + regRS1Ind - 1);
           
           if (csr == 0x300) { // mstatus
-            p->tf->mstatus = *regRS1Ptr;
+            p->regs.mstatus = *regRS1Ptr;
 
           } else if (csr == 0x302) { // medeleg
-            p->tf->medeleg = *regRS1Ptr;
+            p->regs.medeleg = *regRS1Ptr;
 
           } else if (csr == 0x303) { // mideleg
-            p->tf->mideleg = *regRS1Ptr;
+            p->regs.mideleg = *regRS1Ptr;
 
           } else if (csr == 0x341) { // mepc
-            p->tf->mepc = *regRS1Ptr;
+            p->regs.mepc = *regRS1Ptr;
 
           } else if (csr == 0x180) { // satp
             p->tf->kernel_satp = *regRS1Ptr;
 
           } else if (csr == 0x340) { // mscratch
-            p->tf->mscratch = *regRS1Ptr;
+            p->regs.mscratch = *regRS1Ptr;
 
           } else if (csr == 0x304) { // mie
            // enable machine-mode timer interrupts.
-            p->tf->mie = *regRS1Ptr;
+            p->regs.mie = *regRS1Ptr;
 
           } else if (csr == 0x305) { // mtvec
             // set the machine-mode trap handler.
-            p->tf->mtvec = *regRS1Ptr;
+            p->regs.mtvec = *regRS1Ptr;
 
           } else {
             printf("%s\n", "csrw");
