@@ -93,7 +93,6 @@ guesttrap(void)
               p->tf->kernel_satp = *regPtr;
             } else if (csr == 0x100) {
               p->regs.sstatus = *regPtr;
-            }
             } else {
               vm_panic(p->pid);
             }
@@ -111,7 +110,6 @@ guesttrap(void)
               // for now just set to zero (default during normal xv6 boot)
             } else if(csr == 0x100) {
               *regPtr = p->regs.sstatus;
-            }
             } else {
               vm_panic(p->pid);
             }
@@ -180,9 +178,7 @@ usertrap(void)
   if(p->guest) {
     // trap & emulate
     guesttrap();
-  }
-  
-  if(r_scause() == 8){
+  } else if(r_scause() == 8){
     // system call
 
     if(p->killed)
