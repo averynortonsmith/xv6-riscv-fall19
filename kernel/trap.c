@@ -76,78 +76,122 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if(r_scause() == 2 && p->guest) {
-    // illegal instruction
+  } else if(p->guest) {
 
-    // return to next instruction
-    printf("%p\n", r_sepc());
+    // printf("%p\n", r_sepc());
     uint64 instr = 0;
     copyin(p->pagetable, (char*)&instr, r_sepc(), 4);
-    // printf("0x%a\n", instr);
     uint64 opcode = instr & 0x7f;
 
-    switch (opcode) {
-      case 0x73: ; // https://stackoverflow.com/a/18496437/6680182
-        uint64 func3 = (instr >> 12) & 0x7;
+    // print_binary(instr, 64); printf("\n");
 
-        // get register number
-        // printf("%d\n", regInd);
-        uint64 regInd = ((instr >> 7) & 0x1f);
-        uint64* regPtr = (&p->tf->ra + regInd - 1);
-        uint64 csr = (instr >> 20);
+    if (r_scause() == 2) {
+      // illegal instruction
 
-        if(func3 == 0x2){
-          uint64 storeVal;
+      switch (opcode) {
+        // csr instruction
+        case 0x73: ; // https://stackoverflow.com/a/18496437/6680182
+          uint64 func3 = (instr >> 12) & 0x7;
 
-          if (csr == 0xf14) { // mhartid
-            storeVal = 0;
+          // get register number
+          uint64 regInd = ((instr >> 7) & 0x1f);
+          uint64* regPtr = (&p->tf->ra + regInd - 1);
+          uint64 csr = (instr >> 20);
 
-          } else if (csr == 0x300) { // mstatus
-            storeVal = 0; // may need to change
-            // for now just set to zero (default during normal xv6 boot)
+          // csrr
+          if(func3 == 0x2){
+            uint64 storeVal;
+
+            if (csr == 0xf14) { // mhartid
+              storeVal = 0;
+
+            } else if (csr == 0x300) { // mstatus
+              storeVal = 0; // may need to change
+              // for now just set to zero (default during normal xv6 boot)
+
+            } else if (csr == 0x304) { // mie
+              storeVal = 0; // may need to change
+              // for now just set to zero (default during normal xv6 boot)
+
+            } else {
+              printf("%s\n", "csrr");
+              goto vmPanic;
+            }
+
+            // tf starts storing at x1 (ra), so -1 from index
+            *regPtr = storeVal;
+
+          // csrw
+          } else if(func3 == 0x1){
+            
+            if (csr == 0x300) { // mstatus
+              p->tf->mstatus = *regPtr;
+
+            } else if (csr == 0x302) { // medeleg
+              p->tf->medeleg = *regPtr;
+
+            } else if (csr == 0x303) { // mideleg
+              p->tf->mideleg = *regPtr;
+
+            } else if (csr == 0x341) { // mepc
+              p->tf->mepc = *regPtr;
+
+            } else if (csr == 0x180) { // satp
+              p->tf->kernel_satp = *regPtr;
+
+            } else if (csr == 0x340) { // mscratch
+              p->tf->mscratch = *regPtr;
+
+            } else if (csr == 0x305) { // mtvec
+              p->tf->mtvec = *regPtr;
+
+            } else {
+              printf("%s\n", "csrw");
+              goto vmPanic;
+            }
 
           } else {
             goto vmPanic;
           }
-
-          // tf starts storing at x1 (ra), so -1 from index
-          *regPtr = storeVal;
-
-        } else if(func3 == 0x1){
-          
-          if (csr == 0x300) { // mstatus
-            p->tf->mstatus = *regPtr;
-
-          } else if (csr == 0x302) { // medeleg
-            p->tf->medeleg = *regPtr;
-
-          } else if (csr == 0x303) { // mideleg
-            p->tf->mideleg = *regPtr;
-
-          } else if (csr == 0x341) { // mepc
-            p->tf->mepc = *regPtr;
-
-          } else if (csr == 0x180) { // satp
-            p->tf->kernel_satp = *regPtr;
-
-          } else {
-            goto vmPanic;
-          }
-
-        } else {
-          goto vmPanic;
-        }
-        break;
+          break;
       
       default:
-        vmPanic:
-        printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
-        printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-        panic("vm trap");
+        goto vmPanic;
+      }
     }
 
-    p->tf->epc += 4;
+    else if(r_scause() == 0xd) { // guest load page fault
+      uint64 va = r_stval();
+      // guest tries to read cycles since boot
+      if (va == 0x000000000200bff8) {
+        // return garbage
+      } else {
+        goto vmPanic;
+      }
 
+    } else if(r_scause() == 0xf) { // guest store page fault
+      uint64 va = r_stval();
+      // guest tries to ask the CLINT for a timer interrupt.for hartid 0
+      if (va == 0x0000000002004000) {
+        // ignore
+      } else {
+        goto vmPanic;
+      }
+
+    } else {
+      vmPanic:
+      printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      panic("vm trap");
+    }
+
+    // short instruction
+    if ((instr & 0x3) != 0x3) {
+      p->tf->epc += 2;
+    } else {
+      p->tf->epc += 4;
+    }
+    
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

@@ -78,10 +78,14 @@ struct trapframe {
   /* 264 */ uint64 t4;
   /* 272 */ uint64 t5;
   /* 280 */ uint64 t6;
-  uint32 mstatus;
-  uint32 medeleg;
-  uint32 mideleg;
-  uint32 mepc;
+  uint64 mtvec;
+  uint64 mie;
+  uint64 mscratch;
+  uint64 mstatus;
+  uint64 medeleg;
+  uint64 mideleg;
+  uint64 mepc;
+  uint64 clintMtime;
 };
 
 enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
