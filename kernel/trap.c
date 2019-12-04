@@ -91,7 +91,9 @@ guesttrap(void)
 
             } else if (csr == 0x180) { // satp
               p->tf->kernel_satp = *regPtr;
-
+            } else if (csr == 0x100) {
+              p->regs.sstatus = *regPtr;
+            }
             } else {
               vm_panic(p->pid);
             }
@@ -107,6 +109,9 @@ guesttrap(void)
             } else if (csr == 0x300) { // mstatus
               storeVal = 0; // may need to change
               // for now just set to zero (default during normal xv6 boot)
+            } else if(csr == 0x100) {
+              *regPtr = p->regs.sstatus;
+            }
             } else {
               vm_panic(p->pid);
             }

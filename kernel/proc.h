@@ -86,7 +86,7 @@ struct CSRegs {
   uint64 mhartid; // r 0xf14
   uint64 mstatus; // rw 0x300
   uint64 mepc; // w 0x341
-  uint64 sstatus; // rw
+  uint64 sstatus; // rw 0x100
   uint64 sip; // rw
   uint64 sie; // rw
   uint64 mie; // rw
