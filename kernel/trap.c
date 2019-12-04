@@ -151,7 +151,7 @@ guesttrap(void)
           uint64* regPtr = (&p->tf->ra + rd - 1);
 
           if (funct3 == 0x4) {
-            uint64 storeVal = 1;
+            uint64 storeVal = 0; // ?? what to put here?
             *regPtr = storeVal;
 
           } else {
@@ -160,6 +160,11 @@ guesttrap(void)
           }
 
           break;
+        }
+
+        default: {
+          printf("%s\n", "uart");
+          vm_panic(p->pid);
         }
       }
 
@@ -176,7 +181,7 @@ guesttrap(void)
     }
 
   } else if ((which_dev = devintr()) != 0) {
-    printf("%s\n", "got");
+    vm_panic(p->pid);
   } else {
     vm_panic(p->pid);
   }
