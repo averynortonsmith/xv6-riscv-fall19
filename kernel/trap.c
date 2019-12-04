@@ -88,75 +88,79 @@ usertrap(void)
     if (r_scause() == 2) {
       // illegal instruction
 
-      switch (opcode) {
+      if (instr == 0x30200073) {
+        p->tf->epc = p->tf->mepc;
+        goto dontAdvance;
+
+      } else if (opcode == 0x73) {
         // csr instruction
-        case 0x73: ; // https://stackoverflow.com/a/18496437/6680182
-          uint64 func3 = (instr >> 12) & 0x7;
+        uint64 func3 = (instr >> 12) & 0x7;
 
-          // get register number
-          uint64 regInd = ((instr >> 7) & 0x1f);
-          uint64* regPtr = (&p->tf->ra + regInd - 1);
-          uint64 csr = (instr >> 20);
+        // get register number
+        uint64 regInd = ((instr >> 7) & 0x1f);
+        uint64* regPtr = (&p->tf->ra + regInd - 1);
+        uint64 csr = (instr >> 20);
 
-          // csrr
-          if(func3 == 0x2){
-            uint64 storeVal;
+        // csrr
+        if(func3 == 0x2){
+          uint64 storeVal;
 
-            if (csr == 0xf14) { // mhartid
-              storeVal = 0;
+          if (csr == 0xf14) { // mhartid
+            storeVal = 0;
 
-            } else if (csr == 0x300) { // mstatus
-              storeVal = 0; // may need to change
-              // for now just set to zero (default during normal xv6 boot)
+          } else if (csr == 0x300) { // mstatus
+            storeVal = 0; // may need to change
+            // for now just set to zero (default during normal xv6 boot)
 
-            } else if (csr == 0x304) { // mie
-              storeVal = 0; // may need to change
-              // for now just set to zero (default during normal xv6 boot)
-
-            } else {
-              printf("%s\n", "csrr");
-              goto vmPanic;
-            }
-
-            // tf starts storing at x1 (ra), so -1 from index
-            *regPtr = storeVal;
-
-          // csrw
-          } else if(func3 == 0x1){
-            
-            if (csr == 0x300) { // mstatus
-              p->tf->mstatus = *regPtr;
-
-            } else if (csr == 0x302) { // medeleg
-              p->tf->medeleg = *regPtr;
-
-            } else if (csr == 0x303) { // mideleg
-              p->tf->mideleg = *regPtr;
-
-            } else if (csr == 0x341) { // mepc
-              p->tf->mepc = *regPtr;
-
-            } else if (csr == 0x180) { // satp
-              p->tf->kernel_satp = *regPtr;
-
-            } else if (csr == 0x340) { // mscratch
-              p->tf->mscratch = *regPtr;
-
-            } else if (csr == 0x305) { // mtvec
-              p->tf->mtvec = *regPtr;
-
-            } else {
-              printf("%s\n", "csrw");
-              goto vmPanic;
-            }
+          } else if (csr == 0x304) { // mie
+            storeVal = 0; // may need to change
+            // for now just set to zero (default during normal xv6 boot)
 
           } else {
+            printf("%s\n", "csrr");
             goto vmPanic;
           }
-          break;
-      
-      default:
-        goto vmPanic;
+
+          // tf starts storing at x1 (ra), so -1 from index
+          *regPtr = storeVal;
+
+        // csrw
+        } else if(func3 == 0x1){
+          
+          if (csr == 0x300) { // mstatus
+            p->tf->mstatus = *regPtr;
+
+          } else if (csr == 0x302) { // medeleg
+            p->tf->medeleg = *regPtr;
+
+          } else if (csr == 0x303) { // mideleg
+            p->tf->mideleg = *regPtr;
+
+          } else if (csr == 0x341) { // mepc
+            p->tf->mepc = *regPtr;
+
+          } else if (csr == 0x180) { // satp
+            p->tf->kernel_satp = *regPtr;
+
+          } else if (csr == 0x340) { // mscratch
+            p->tf->mscratch = *regPtr;
+
+          } else if (csr == 0x304) { // mie
+           // enable machine-mode timer interrupts.
+            p->tf->mie = *regPtr;
+
+          } else if (csr == 0x305) { // mtvec
+            // set the machine-mode trap handler.
+            p->tf->mtvec = *regPtr;
+
+          } else {
+            printf("%s\n", "csrw");
+            goto vmPanic;
+          }
+
+        } else {
+          goto vmPanic;
+        }
       }
     }
 
@@ -191,6 +195,8 @@ usertrap(void)
     } else {
       p->tf->epc += 4;
     }
+
+    dontAdvance: ;
     
   } else if((which_dev = devintr()) != 0){
     // ok
