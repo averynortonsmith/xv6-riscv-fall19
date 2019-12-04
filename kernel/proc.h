@@ -87,21 +87,21 @@ struct CSRegs {
   uint64 mstatus; // rw 0x300
   uint64 mepc; // w 0x341
   uint64 sstatus; // rw 0x100
-  uint64 sip; // rw
-  uint64 sie; // rw
-  uint64 mie; // rw
-  uint64 sepc; // rw
+  uint64 sip; // rw 0x144
+  uint64 sie; // rw 0x104
+  uint64 mie; // rw 0x304
+  uint64 sepc; // rw 0x141
   uint64 medeleg; // rw 0x302
   uint64 mideleg; // rw 0x303
-  uint64 stvec; // rw
-  uint64 mtvec; // w
+  uint64 stvec; // rw 0x105
+  uint64 mtvec; // w 0x305
   uint64 satp; // rw 0x180
-  uint64 sscratch; // w
-  uint64 mscratch; // w
-  uint64 scause; // r
-  uint64 stval; // r
-  uint64 mcounteren; // rw
-  uint64 time; // r
+  uint64 sscratch; // w 0x140
+  uint64 mscratch; // w 0x340
+  uint64 scause; // r 0x142
+  uint64 stval; // r 0x143
+  // uint64 mcounteren; // rw 
+  // uint64 time; // r
 };
 
 // Per-process state
