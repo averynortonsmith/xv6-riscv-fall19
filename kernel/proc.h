@@ -83,14 +83,25 @@ struct trapframe {
 enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct CSRegs {
-  uint64 mtvec;
-  uint64 mie;
-  uint64 mscratch;
-  uint64 mstatus;
-  uint64 medeleg;
-  uint64 mideleg;
-  uint64 mepc;
-  uint64 clintMtime;
+  uint64 mhartid; // r 0xf14
+  uint64 mstatus; // rw 0x300
+  uint64 mepc; // w 0x341
+  uint64 sstatus; // rw
+  uint64 sip; // rw
+  uint64 sie; // rw
+  uint64 mie; // rw
+  uint64 sepc; // rw
+  uint64 medeleg; // rw 0x302
+  uint64 mideleg; // rw 0x303
+  uint64 stvec; // rw
+  uint64 mtvec; // w
+  uint64 satp; // rw 0x180
+  uint64 sscratch; // w
+  uint64 mscratch; // w
+  uint64 scause; // r
+  uint64 stval; // r
+  uint64 mcounteren; // rw
+  uint64 time; // r
 };
 
 // Per-process state
