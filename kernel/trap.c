@@ -176,7 +176,7 @@ guesttrap(void)
     }
 
   } else if ((which_dev = devintr()) != 0) {
-    
+    printf("%s\n", "got");
   } else {
     vm_panic(p->pid);
   }
