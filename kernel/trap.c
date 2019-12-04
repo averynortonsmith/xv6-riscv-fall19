@@ -41,11 +41,54 @@ void print_binary(uint32 number, int length) {
 }
 
 void
-vm_panic(int pid)
+vm_panic()
 {
-  printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), pid);
+  printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), myproc()->pid);
   printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
   panic("vm trap");
+}
+
+uint64*
+getcsrptr(struct CSRegs *regs, uint16 code){
+  switch(code){
+    case 0xf14:
+      return &regs->mhartid;
+    case 0x300:
+      return &regs->mstatus;
+    case 0x341:
+      return &regs->mepc;
+    case 0x100:
+      return &regs->sstatus;
+    case 0x144:
+      return &regs->sip;
+    case 0x104:
+      return &regs->sie;
+    case 0x304:
+      return &regs->mie;
+    case 0x141:
+      return &regs->sepc;
+    case 0x302:
+      return &regs->medeleg;
+    case 0x303:
+      return &regs->mideleg;
+    case 0x105:
+      return &regs->stvec;
+    case 0x305:
+      return &regs->mtvec;
+    case 0x180:
+     return &regs->satp;
+    case 0x140:
+      return &regs->sscratch;
+    case 0x340:
+      return &regs->mscratch;
+    case 0x142:
+      return &regs->scause;
+    case 0x143:
+      return &regs->stval;
+    default:
+      vm_panic();
+      return 0;
+  }
 }
 
 void
@@ -74,67 +117,30 @@ guesttrap(void)
         uint8 rd = ((instr >> 7) & 0x1f); // register is x[rd]
         uint8 rs1 = ((instr >> 15) & 0x1f); // register is x[rs1]
         uint16 csr = (instr >> 20); // csr register
+        uint64* csrPtr = getcsrptr(&p->regs, csr);
         uint64* regPtr; //pointer to register
 
         switch(funct3) {
           case 0x1:{ // csrrw
-            if(rd != 0) vm_panic(p->pid); // not csrw
+            if(rd != 0) vm_panic(); // not csrw
             regPtr = (&p->tf->ra + rs1 - 1);
-
-            if (csr == 0x300) { // mstatus
-              p->regs.mstatus = *regPtr;
-            } else if (csr == 0x302) { // medeleg
-              p->regs.medeleg = *regPtr;
-            } else if (csr == 0x303) { // mideleg
-              p->regs.mideleg = *regPtr;
-            } else if (csr == 0x340) { // mscratch
-              p->regs.mscratch = *regPtr;
-            } else if (csr == 0x341) { // mepc
-              p->regs.mepc = *regPtr;
-            } else if (csr == 0x180) { // satp
-              p->tf->kernel_satp = *regPtr;
-            } else if (csr == 0x304) { // mie
-              // enable machine-mode timer interrupts.
-              p->regs.mie = *regPtr;
-            } else if (csr == 0x305) { // mtvec
-              // set the machine-mode trap handler.
-              p->regs.mtvec = *regPtr;
-            } else if (csr == 0x100) {
-              p->regs.sstatus = *regPtr;
-            } else {
-              vm_panic(p->pid);
-            }
+            *csrPtr = *regPtr;
             break;
           }
           case 0x2:{ // csrrs (csrr is a pseudoinstruction that uses csrrs)
-            if(rs1 != 0) vm_panic(p->pid); // not csrr
+            if(rs1 != 0) vm_panic(); // not csrr
             regPtr = (&p->tf->ra + rd - 1);
-
-            uint64 storeVal;
-            if (csr == 0xf14) { // mhartid
-              storeVal = 0;
-            } else if (csr == 0x300) { // mstatus
-              storeVal = 0; // may need to change
-            } else if (csr == 0x304) { // mie
-              storeVal = 0; // may need to change
-              // for now just set to zero (default during normal xv6 boot)
-            } else if(csr == 0x100) {
-              *regPtr = p->regs.sstatus;
-            } else {
-              vm_panic(p->pid);
-            }
-            // tf starts storing at x1 (ra), so -1 from index
-            *regPtr = storeVal;
+            *regPtr = *csrPtr;
             break;
           }
           default:
-            vm_panic(p->pid);
+            vm_panic();
         }
 
         break;
       }
       default:
-        vm_panic(p->pid);
+        vm_panic();
     }
   } else if(r_scause() == 0xd) { // guest load page fault
     uint64 va = r_stval();
@@ -169,7 +175,7 @@ guesttrap(void)
       }
 
     } else {
-      vm_panic(p->pid);
+      vm_panic();
     }
   } else if(r_scause() == 0xf) { // guest store page fault
     uint64 va = r_stval();
@@ -177,13 +183,13 @@ guesttrap(void)
     if (va == 0x0000000002004000) {
       // ignore
     } else {
-      vm_panic(p->pid);
+      vm_panic();
     }
 
   } else if ((which_dev = devintr()) != 0) {
     vm_panic(p->pid);
   } else {
-    vm_panic(p->pid);
+    vm_panic();
   }
 
   // short instruction
