@@ -88,6 +88,7 @@ usertrap(void)
     if (r_scause() == 2) {
       // illegal instruction
 
+      // mret
       if (instr == 0x30200073) {
         p->tf->epc = p->tf->mepc;
         goto dontAdvance;
@@ -95,15 +96,15 @@ usertrap(void)
       } else if (opcode == 0x73) {
         // csr instruction
         uint64 func3 = (instr >> 12) & 0x7;
-
-        // get register number
-        uint64 regInd = ((instr >> 7) & 0x1f);
-        uint64* regPtr = (&p->tf->ra + regInd - 1);
         uint64 csr = (instr >> 20);
 
         // csrr
         if(func3 == 0x2){
           uint64 storeVal;
+
+          // get register number
+          uint64 regRDInd = ((instr >> 7) & 0x1f);
+          uint64* regRDPtr = (&p->tf->ra + regRDInd - 1);
 
           if (csr == 0xf14) { // mhartid
             storeVal = 0;
@@ -122,36 +123,40 @@ usertrap(void)
           }
 
           // tf starts storing at x1 (ra), so -1 from index
-          *regPtr = storeVal;
+          *regRDPtr = storeVal;
 
         // csrw
         } else if(func3 == 0x1){
+
+          // get register number
+          uint64 regRS1Ind = ((instr >> 15) & 0xf);
+          uint64* regRS1Ptr = (&p->tf->ra + regRS1Ind - 1);
           
           if (csr == 0x300) { // mstatus
-            p->tf->mstatus = *regPtr;
+            p->tf->mstatus = *regRS1Ptr;
 
           } else if (csr == 0x302) { // medeleg
-            p->tf->medeleg = *regPtr;
+            p->tf->medeleg = *regRS1Ptr;
 
           } else if (csr == 0x303) { // mideleg
-            p->tf->mideleg = *regPtr;
+            p->tf->mideleg = *regRS1Ptr;
 
           } else if (csr == 0x341) { // mepc
-            p->tf->mepc = *regPtr;
+            p->tf->mepc = *regRS1Ptr;
 
           } else if (csr == 0x180) { // satp
-            p->tf->kernel_satp = *regPtr;
+            p->tf->kernel_satp = *regRS1Ptr;
 
           } else if (csr == 0x340) { // mscratch
-            p->tf->mscratch = *regPtr;
+            p->tf->mscratch = *regRS1Ptr;
 
           } else if (csr == 0x304) { // mie
            // enable machine-mode timer interrupts.
-            p->tf->mie = *regPtr;
+            p->tf->mie = *regRS1Ptr;
 
           } else if (csr == 0x305) { // mtvec
             // set the machine-mode trap handler.
-            p->tf->mtvec = *regPtr;
+            p->tf->mtvec = *regRS1Ptr;
 
           } else {
             printf("%s\n", "csrw");
