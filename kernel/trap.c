@@ -105,8 +105,8 @@ guesttrap(void)
   // printf("0x%a\n", instr);
   uint32 opcode = instr & 0x7f;
 
-  if(r_scause() == 2){
-    if (instr == 0x30200073) {
+  if(r_scause() == 0x2){
+    if (instr == 0x30200073) { // mret
       p->tf->epc = p->regs.mepc;
       return;
     }
@@ -121,8 +121,11 @@ guesttrap(void)
         uint64* regPtr; //pointer to register
 
         switch(funct3) {
-          case 0x1:{ // csrrw
-            if(rd != 0) vm_panic(); // not csrw
+          case 0x1:{ // csrrw (csrw is a pseudoinstruction that uses csrrw)
+            if(rd != 0){  // not csrw
+              uint64* rdPtr = (&p->tf->ra + rd - 1);
+              *rdPtr = *csrPtr;
+            }
             regPtr = (&p->tf->ra + rs1 - 1);
             *csrPtr = *regPtr;
             break;
