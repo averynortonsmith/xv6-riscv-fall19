@@ -25,8 +25,6 @@ exec(char *path, char **argv)
 
   if(strncmp(path, "guest", 6) == 0){
     p->guest=1;
-  } else {
-    p->guest=0;
   }
 
   if((ip = namei(path)) == 0){
@@ -72,6 +70,8 @@ exec(char *path, char **argv)
   uint64 oldsz = p->sz;
 
   if(!(p->guest)){
+    // sets process privilege level field to 3 (machine mode) for VMM to use
+    p->privilege = 3;
     // Allocate two pages at the next page boundary.
     // Use the second as the user stack.
     sz = PGROUNDUP(sz);

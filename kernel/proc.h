@@ -95,13 +95,13 @@ struct CSRegs {
   uint64 mideleg; // rw 0x303
   uint64 stvec; // rw 0x105
   uint64 mtvec; // w 0x305
-  uint64 satp; // rw 0x180
+  uint64 satp; // rw 0x180 -> used by processor
   uint64 sscratch; // w 0x140
   uint64 mscratch; // w 0x340
   uint64 scause; // r 0x142
   uint64 stval; // r 0x143
-  // uint64 mcounteren; // rw 
-  // uint64 time; // r
+  // uint64 mcounteren; // rw 0x306
+  // uint64 time; // r 0xc01
 };
 
 // Per-process state
@@ -127,5 +127,6 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   char guest;
+  char privilege;
   struct CSRegs regs;
 };

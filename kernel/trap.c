@@ -106,9 +106,25 @@ guesttrap(void)
   uint32 opcode = instr & 0x7f;
 
   if(r_scause() == 0x2){
+    if (instr == 0x10200073) { // sret
+
+    }
     if (instr == 0x30200073) { // mret
+      // PC = CSRs[mepc]
       p->tf->epc = p->regs.mepc;
+      // privilege = CSRs[mstatus].MPP
+      p->privilege = ((p->regs.mstatus >> 11) & 0x3);
+      // CSRs[mstatus].MIE = CSRs[mstatus].MPIE
+      p->regs.mstatus &= (~(1L << 3)); // CSRs[mstatus].MIE = 0
+      p->regs.mstatus |= (((p->regs.mstatus >> 7) & 0x1) << 3);
+      // CSRs[mstatus].MPIE = 1
+      p->regs.mstatus |= (1L << 7);
+      // CSRs[mstatus].MPP = 0
+      p->regs.mstatus &= (~(3L << 11));
       return;
+    }
+    if (instr == 0x10500073) { // wfi
+
     }
 
     switch (opcode) {
@@ -116,23 +132,32 @@ guesttrap(void)
         uint8 funct3 = (instr >> 12) & 0x7; // what csr instruction?
         uint8 rd = ((instr >> 7) & 0x1f); // register is x[rd]
         uint8 rs1 = ((instr >> 15) & 0x1f); // register is x[rs1]
-        uint16 csr = (instr >> 20); // csr register
-        uint64* csrPtr = getcsrptr(&p->regs, csr);
-        uint64* regPtr; //pointer to register
 
         switch(funct3) {
+          case 0x0:{
+            uint8 funct7 = ((instr >> 25) & 0x7f);
+            uint8 rs2 = ((instr >> 25) & 0x7f);
+            if(rd == 0x0 && funct7 == 0x09){ // sfence.vma
+
+            } else vm_panic();
+            break;
+          }
           case 0x1:{ // csrrw (csrw is a pseudoinstruction that uses csrrw)
+            uint16 csr = (instr >> 20); // csr register
+            uint64* csrPtr = getcsrptr(&p->regs, csr);
             if(rd != 0){  // not csrw
               uint64* rdPtr = (&p->tf->ra + rd - 1);
               *rdPtr = *csrPtr;
             }
-            regPtr = (&p->tf->ra + rs1 - 1);
+            uint64* regPtr = (&p->tf->ra + rs1 - 1);
             *csrPtr = *regPtr;
             break;
           }
           case 0x2:{ // csrrs (csrr is a pseudoinstruction that uses csrrs)
             if(rs1 != 0) vm_panic(); // not csrr
-            regPtr = (&p->tf->ra + rd - 1);
+            uint16 csr = (instr >> 20); // csr register
+            uint64* csrPtr = getcsrptr(&p->regs, csr);
+            uint64* regPtr = (&p->tf->ra + rd - 1);
             *regPtr = *csrPtr;
             break;
           }
