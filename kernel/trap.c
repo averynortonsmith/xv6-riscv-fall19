@@ -111,6 +111,10 @@ guesttrap(void)
     * This code does not properly simulate the following.
     * - some of the CSR registers are subsets of others (ex. sstatus is subset of mstatus). this code treats them as separate registers.
     * - privilege levels within the guest OS are not yet handled properly
+    * 
+    * QUESTIONS:
+    *  - setting/ redirecting interrupts, wfi
+    * 
     */
     if (instr == 0x10200073) { // sret
       // PC = CSRs[sepc]
@@ -139,7 +143,8 @@ guesttrap(void)
       p->regs.mstatus &= (~(3L << 11));
       return;
     } else if (instr == 0x10500073) { // wfi
-      vm_panic();
+      // no-op
+      // yield();
     }
 
     switch (opcode) {
@@ -151,7 +156,7 @@ guesttrap(void)
         switch(funct3) {
           case 0x0:{
             uint8 funct7 = ((instr >> 25) & 0x7f);
-            // uint8 rs2 = ((instr >> 25) & 0x7f);
+            // uint8 rs2 = ((instr >> 20) & 0x1f);
             if(rd == 0x0 && funct7 == 0x09){ // sfence.vma
               vm_panic();
             } else vm_panic();
@@ -205,7 +210,7 @@ guesttrap(void)
 
           } else {
             printf("%s\n", "uart");
-            vm_panic(p->pid);
+            vm_panic();
           }
 
           break;
@@ -213,7 +218,7 @@ guesttrap(void)
 
         default: {
           printf("%s\n", "uart");
-          vm_panic(p->pid);
+          vm_panic();
         }
       }
 
@@ -238,7 +243,7 @@ guesttrap(void)
 
           } else {
             printf("%s\n", "uart");
-            vm_panic(p->pid);
+            vm_panic();
           }
 
           break;
@@ -246,7 +251,7 @@ guesttrap(void)
 
         default: {
           printf("%s\n", "uart");
-          vm_panic(p->pid);
+          vm_panic();
         }
       }
 
@@ -256,7 +261,8 @@ guesttrap(void)
 
   } else if ((which_dev = devintr()) != 0) {
     printf("%s\n", "inter");
-    vm_panic(p->pid);
+    return;
+    // vm_panic();
   } else {
     vm_panic();
   }
