@@ -125,8 +125,7 @@ guesttrap(void)
       // CSRs[sstatus].SPP = 0
       p->regs.sstatus &= (~(1L << 8));
       return;
-    }
-    if (instr == 0x30200073) { // mret
+    } else if (instr == 0x30200073) { // mret
       // PC = CSRs[mepc]
       p->tf->epc = p->regs.mepc;
       // privilege = CSRs[mstatus].MPP
@@ -139,8 +138,7 @@ guesttrap(void)
       // CSRs[mstatus].MPP = 0
       p->regs.mstatus &= (~(3L << 11));
       return;
-    }
-    if (instr == 0x10500073) { // wfi
+    } else if (instr == 0x10500073) { // wfi
       vm_panic();
     }
 
@@ -153,7 +151,7 @@ guesttrap(void)
         switch(funct3) {
           case 0x0:{
             uint8 funct7 = ((instr >> 25) & 0x7f);
-            uint8 rs2 = ((instr >> 25) & 0x7f);
+            // uint8 rs2 = ((instr >> 25) & 0x7f);
             if(rd == 0x0 && funct7 == 0x09){ // sfence.vma
               vm_panic();
             } else vm_panic();
@@ -197,12 +195,12 @@ guesttrap(void)
     // guest tries to read line status register from UART
       switch (opcode) {
         case 0x3: {
-          uint8 funct3 = (instr >> 12) & 0x7; // what csr instruction?
+          uint8 funct3 = (instr >> 12) & 0x7; // what instruction?
           uint8 rd = ((instr >> 7) & 0x1f); // register is x[rd]
           uint64* regPtr = (&p->tf->ra + rd - 1);
 
           if (funct3 == 0x4) {
-            uint64 storeVal = 0; // ?? what to put here?
+            uint64 storeVal = 0x20; // ?? what to put here?
             *regPtr = storeVal;
 
           } else {
@@ -227,11 +225,37 @@ guesttrap(void)
     // guest tries to ask the CLINT for a timer interrupt.for hartid 0
     if (va == 0x0000000002004000) {
       // ignore
+    } else if (va == 0x0000000010000000) {
+      // guest tries to write transmit holding register in UART
+      switch (opcode) {
+        case 0x23: { // sb?
+          uint8 funct3 = (instr >> 12) & 0x7; // what instruction?
+          uint8 rs2 = ((instr >> 20) & 0x1f); // register is x[rd]
+          uint64* regPtr = (&p->tf->ra + rs2 - 1);
+
+          if (funct3 == 0x0) { // sb
+            consputc(*regPtr);
+
+          } else {
+            printf("%s\n", "uart");
+            vm_panic(p->pid);
+          }
+
+          break;
+        }
+
+        default: {
+          printf("%s\n", "uart");
+          vm_panic(p->pid);
+        }
+      }
+
     } else {
       vm_panic();
     }
 
   } else if ((which_dev = devintr()) != 0) {
+    printf("%s\n", "inter");
     vm_panic(p->pid);
   } else {
     vm_panic();
