@@ -106,8 +106,25 @@ guesttrap(void)
   uint32 opcode = instr & 0x7f;
 
   if(r_scause() == 0x2){
+    /*
+    * WARNING:
+    * This code does not properly simulate the following.
+    * - some of the CSR registers are subsets of others (ex. sstatus is subset of mstatus). this code treats them as separate registers.
+    * - privilege levels within the guest OS are not yet handled properly
+    */
     if (instr == 0x10200073) { // sret
-
+      // PC = CSRs[sepc]
+      p->tf->epc = p->regs.sepc;
+      // privilege = CSRs[sstatus].SPP
+      p->privilege = ((p->regs.sstatus >> 8) & 0x1);
+      // CSRs[sstatus].SIE = CSRs[sstatus].SPIE
+      p->regs.sstatus &= (~(1L << 1)); // CSRs[mstatus].SIE = 0
+      p->regs.sstatus |= (((p->regs.sstatus >> 5) & 0x1) << 1);
+      // CSRs[sstatus].SPIE = 1
+      p->regs.sstatus |= (1L << 5);
+      // CSRs[sstatus].SPP = 0
+      p->regs.sstatus &= (~(1L << 8));
+      return;
     }
     if (instr == 0x30200073) { // mret
       // PC = CSRs[mepc]
@@ -124,7 +141,7 @@ guesttrap(void)
       return;
     }
     if (instr == 0x10500073) { // wfi
-
+      vm_panic();
     }
 
     switch (opcode) {
@@ -138,7 +155,7 @@ guesttrap(void)
             uint8 funct7 = ((instr >> 25) & 0x7f);
             uint8 rs2 = ((instr >> 25) & 0x7f);
             if(rd == 0x0 && funct7 == 0x09){ // sfence.vma
-
+              vm_panic();
             } else vm_panic();
             break;
           }
