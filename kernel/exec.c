@@ -72,6 +72,8 @@ exec(char *path, char **argv)
   if(!(p->guest)){
     // sets process privilege level field to 3 (machine mode) for VMM to use
     p->privilege = 3;
+    // creates shadow page table
+    p->shadowpt = proc_pagetable(p);
     // Allocate two pages at the next page boundary.
     // Use the second as the user stack.
     sz = PGROUNDUP(sz);

@@ -76,7 +76,7 @@ getcsrptr(struct CSRegs *regs, uint16 code){
     case 0x305:
       return &regs->mtvec;
     case 0x180:
-     return &regs->satp;
+      return &regs->satp;
     case 0x140:
       return &regs->sscratch;
     case 0x340:
@@ -111,6 +111,7 @@ guesttrap(void)
     * This code does not properly simulate the following.
     * - some of the CSR registers are subsets of others (ex. sstatus is subset of mstatus). this code treats them as separate registers.
     * - privilege levels within the guest OS are not yet handled properly
+    * - accessing a PTE after it has been deprivileged doesn't cause a shadow page fault
     * 
     * QUESTIONS:
     *  - setting/ redirecting interrupts, wfi
@@ -158,7 +159,7 @@ guesttrap(void)
             uint8 funct7 = ((instr >> 25) & 0x7f);
             // uint8 rs2 = ((instr >> 20) & 0x1f);
             if(rd == 0x0 && funct7 == 0x09){ // sfence.vma
-              vm_panic();
+              // vm_panic();
             } else vm_panic();
             break;
           }
@@ -171,6 +172,9 @@ guesttrap(void)
             }
             uint64* regPtr = (&p->tf->ra + rs1 - 1);
             *csrPtr = *regPtr;
+            if(csr == 0x180){ // satp
+              // clear page table
+            }
             break;
           }
           case 0x2:{ // csrrs (csrr is a pseudoinstruction that uses csrrs)
@@ -260,7 +264,7 @@ guesttrap(void)
     }
 
   } else if ((which_dev = devintr()) != 0) {
-    printf("%s\n", "inter");
+    // printf("%s\n", "inter");
     return;
     // vm_panic();
   } else {
@@ -369,6 +373,10 @@ usertrapret(void)
 
   // tell trampoline.S the user page table to switch to.
   uint64 satp = MAKE_SATP(p->pagetable);
+  // if (p->guest && p->regs.satp){
+  //   satp = MAKE_SATP(p->shadowpt);
+  // }
+  
 
   // jump to trampoline.S at the top of memory, which 
   // switches to the user page table, restores user registers,

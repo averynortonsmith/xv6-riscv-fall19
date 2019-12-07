@@ -129,4 +129,5 @@ struct proc {
   char guest;
   char privilege;
   struct CSRegs regs;
+  pagetable_t shadowpt;       // Shadow page table
 };
