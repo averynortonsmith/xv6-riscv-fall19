@@ -1,4 +1,7 @@
 
+## Virtual Machine Monitor Project
+Felipe Monsalve and Avery Nortonsmith
+
 ### intro
 #### trap-and-emulate and memory translation
 
@@ -148,7 +151,9 @@ getcsrptr(struct CSRegs *regs, uint16 code){
 ```
 
 - more work to maintain state
-- 
+- forward IO from UART
+- had to relax clock frequency assumptions
+- didn't reach disk simulation
 
 ----------
 
@@ -163,6 +168,10 @@ if ((which_dev = devintr()) != 0) {
 
 ...
 ```
+
+- worked on in parallel with virtual memory (timer interrupts)
+- intended for host to check for timer interrupts, call user handler
+- tricky to test
 
 ----------
 
@@ -184,4 +193,4 @@ if ((which_dev = devintr()) != 0) {
 
 ### conclusion
 
-
+- a tricky and illuminating project
