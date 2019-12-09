@@ -91,6 +91,7 @@ getcsrptr(struct CSRegs *regs, uint16 code){
   }
 }
 
+int c = 0;
 void
 guesttrap(void)
 {
@@ -200,10 +201,13 @@ guesttrap(void)
     // guest tries to read cycles since boot
       // return garbage
 
+    } else if (va == 0x10001010) {
+      // guest tries to read VIRTIO_MMIO_DEVICE_FEATURES
+
     } else if (va == 0x0000000010000005) {
     // guest tries to read line status register from UART
       switch (opcode) {
-        case 0x3: {
+        case 0x3: { // lw
           uint8 funct3 = (instr >> 12) & 0x7; // what instruction?
           uint8 rd = ((instr >> 7) & 0x1f); // register is x[rd]
           uint64* regPtr = (&p->tf->ra + rd - 1);
@@ -226,6 +230,49 @@ guesttrap(void)
         }
       }
 
+    } else if ((opcode & 0x3) == 0) { // short op
+
+      uint32 shortOp = (instr >> 13) & 0x7;
+      switch (shortOp) {
+        case 0x2: { // lw
+          uint8 rd = ((instr >> 2) & 0x7); // register is x[rd]
+          uint64* regPtr = (&p->tf->ra + rd + 8 - 1); // SHORT REG INDEX GETS + 8!!!
+
+          // spoof disk (cirtio_disc.c)
+          // if(*R(n, VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 ||
+          //    *R(n, VIRTIO_MMIO_VERSION) != 1 ||
+          //    *R(n, VIRTIO_MMIO_DEVICE_ID) != 2 ||
+          //    *R(n, VIRTIO_MMIO_VENDOR_ID) != 0x554d4551){
+          //   panic("could not find virtio disk");
+
+          uint64 storeVal;
+          if (va == 0x10001000) {
+            storeVal = 0x74726976; 
+          } else if (va == 0x10001004) {
+            storeVal = 0x1; 
+          } else if (va == 0x10001008) {
+            storeVal = 0x2; 
+          } else if (va == 0x1000100c) {
+            storeVal = 0x554d4551;
+          } else if (va == 0x10001034) {
+            // guest tries to read VIRTIO_MMIO_QUEUE_NUM_MAX
+            storeVal = 0x8; // NUM 
+          } else {
+            printf("%s\n", "disc");
+            vm_panic();
+          }
+          *regPtr = storeVal;
+          break;
+        }
+
+        default: {
+          printf("%s\n", "disc");
+          vm_panic();
+        }
+      }
+
+    } else if (va >= TRAMPOLINE - 10000) {
+      // guest tries to read something in TRAMPOLINE?
     } else {
       vm_panic();
     }
@@ -259,12 +306,50 @@ guesttrap(void)
         }
       }
 
+    } else if (va == 0xc000028) {
+      // guest tries to set plic IRQ priorities (plic.c)
+
+    } else if (va == 0xc000004) {
+      // guest tries to set plic IRQ priorities (plic.c)
+
+    } else if (va == 0xc002080) {
+      // guest tries to set uart's enable bit for this hart's S-mode. 
+
+    } else if (va == 0xc201000) {
+      // guest tries to set this hart's S-mode priority threshold to 0.
+
+    } else if (va == 0x10001070) {
+      // guest tries to set VIRTIO_MMIO_STATUS
+
+    } else if (va == 0x10001020) {
+      // guest tries to set VIRTIO_MMIO_DRIVER_FEATURES
+
+    } else if (va == 0x10001028) {
+      // guest tries to set VIRTIO_MMIO_GUEST_PAGE_SIZE
+
+    } else if (va == 0x10001030) {
+      // guest tries to set VIRTIO_MMIO_QUEUE_SEL
+
+    } else if (va == 0x10001038) {
+      // guest tries to set VIRTIO_MMIO_QUEUE_NUM
+
+    } else if (va == 0x10001040) {
+      // guest tries to set VIRTIO_MMIO_QUEUE_PFN
+
+    } else if (va >= TRAMPOLINE - 10000) {
+      // guest tries to set something in TRAMPOLINE?
+
     } else {
+      print_binary(instr, 32);
+      printf("%p\n", va);
       vm_panic();
     }
 
   } else if ((which_dev = devintr()) != 0) {
     // printf("%s\n", "inter");
+    if ((c = (c + 1) % 60) == 59) {
+      p->tf->epc = p->regs.stvec;
+    }
     return;
     // vm_panic();
   } else {
