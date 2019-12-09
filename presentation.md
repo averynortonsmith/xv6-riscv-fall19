@@ -1,11 +1,15 @@
 
-- trap-and-emulate and memory translation
+### intro
+#### trap-and-emulate and memory translation
+
 - most of our work was done in trap.c
 - added 'guest' field to proc struct
 - wanted to maintain backwards compatibility for normal user programs
 - priviledged instructions, hardware interaction, virtual memory, interrupts
 
 ----------
+
+### kernel as user program
 
 - take snapshot of kernel binary
 - head to deal with size issue, symbol stripper
@@ -54,6 +58,8 @@ $
 
 ----------
 
+### progress through debugging
+
 - incremental progress fixing bugs as they arose
 - guest kernel makes many assumptions about its environment
 - first issue was privileged instructions (entry.S)
@@ -95,7 +101,7 @@ junk:
 
 ----------
 
-- priviledged instructions
+### priviledged instructions
 
 ```
 uint64*
@@ -114,9 +120,14 @@ getcsrptr(struct CSRegs *regs, uint16 code){
   ...
 ```
 
+- control and status registers
+- decoding instructions
+- index into process trap-frame
+- have to maintain state in software instead of hardware
+
 ----------
 
-- hardware interaction
+### hardware interaction
 
 ```
 // qemu puts UART registers here in physical memory.
@@ -136,13 +147,16 @@ getcsrptr(struct CSRegs *regs, uint16 code){
 ...
 ```
 
+- more work to maintain state
+- 
+
 ----------
 
-- virtual memory
+### virtual memory
 
 ----------
 
-- interrupts
+### interrupts
 
 ```
 if ((which_dev = devintr()) != 0) {
@@ -152,13 +166,14 @@ if ((which_dev = devintr()) != 0) {
 
 ----------
 
-- resources
+### resources
 
-- lots of time working with GDB
 - incremental nature meant that we were never working with non-buggy code
 
+- lots of time working with GDB
 - figuring out where / why guest kernel was crashing
 - seeing how the normal xv6 initialization sequence proceeds
+- guest / host binary divergence
 - GDB is wonderful, has hard time with jumps between guest and host
 
 - RISC-V reader - good for understanding instruction encodings,
@@ -166,4 +181,7 @@ if ((which_dev = devintr()) != 0) {
 - only electronic copy online was in spanish
 
 ----------
+
+### conclusion
+
 
