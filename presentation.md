@@ -185,6 +185,8 @@ if ((which_dev = devintr()) != 0) {
 - guest / host binary divergence
 - GDB is wonderful, has hard time with jumps between guest and host
 
+<br>
+
 - RISC-V reader - good for understanding instruction encodings,
    priviledged ISA, register functions, etc
 - only electronic copy online was in spanish
