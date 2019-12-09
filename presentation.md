@@ -159,6 +159,20 @@ getcsrptr(struct CSRegs *regs, uint16 code){
 
 ### virtual memory
 
+SHADOW PAGE TABLES
+
+![](shadow_pt.png)
+
+- added another page table to proc.h
+- satp register is emulated, so guest OS has no direct control over paging
+- on write to satp, we clear shadow page table
+- rely on shadow page faults to trace guest page table
+  - issues when deprivileging an area in memory
+
+- on paging disabled satp set to 0
+- passed address of VMM Map as satp to userret
+
+
 ----------
 
 ### interrupts
